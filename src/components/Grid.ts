@@ -20,6 +20,8 @@ export default class Grid {
     private readonly _cells: Cell[][];
     private readonly _balls: Ball[] = [];
     private _selectedBall: Ball | null = null;
+    private _targetCell: Cell | null = null;
+    private _currentPath: Cords[];
 
     constructor(size: Cords, ballsPerRound: number) {
         this._size = size;
@@ -41,6 +43,21 @@ export default class Grid {
 
         this._ref.appendChild(frag);
 
+        this._ref.addEventListener('click', () => this.handleClick())
+
+        this.generateBalls();
+    }
+
+    private handleClick() {
+        if (!this._selectedBall || !this._targetCell) return;
+        const [x,y] = this._selectedBall.position;
+        this._cells[x][y].empty();
+
+        this._targetCell.placeBall(this._selectedBall);
+        this._targetCell = null;
+        this._selectedBall.deSelect();
+        this._selectedBall = null;
+        this.darkenMarks();
         this.generateBalls();
     }
 
@@ -55,7 +72,19 @@ export default class Grid {
 
     private handleHover(cell: Cell) {
         if (this._selectedBall) {
-            this.findPath(cell);
+            const pathExists = this.findPath(cell);
+
+            if (!cell.contains && !pathExists) {
+                cell.ref.style.cursor = 'default';
+                return;
+            }
+            cell.ref.style.cursor = 'pointer';
+        } else {
+            if (cell.contains && this.getNeighbors(cell.position).length > 0) {
+                cell.ref.style.cursor = 'pointer';
+            } else {
+                cell.ref.style.cursor = 'default';
+            }
         }
     }
 
@@ -73,11 +102,13 @@ export default class Grid {
         }
     }
 
-    private findPath(cell: Cell) {
+    private findPath(cell: Cell): boolean {
+        this._currentPath = [];
         const start: Cords = this._selectedBall.position;
         const end: Cords = cell.position
 
         if (this._cells[end[0]][end[1]].contains) {
+            this._targetCell = null;
             this.clearMarks();
             return false;
         }
@@ -101,6 +132,7 @@ export default class Grid {
             let winnerCords: Cords = available[0];
             let winnerIndex: number;
             if (available.length <= 0) {
+                this._targetCell = null;
                 this.clearMarks();
                 return false;
             }
@@ -113,7 +145,10 @@ export default class Grid {
             available.splice(winnerIndex, 1);
             current = winnerCords;
         }
+        const [x, y] = current;
+        this._targetCell = this._cells[x][y];
         this.reconstructPath(current, maze);
+
         return true;
     }
 
@@ -151,9 +186,17 @@ export default class Grid {
         while (maze[current[0]][current[1]].parent) {
             const [x, y] = current;
             this._cells[x][y].mark();
+            this._currentPath.push(current);
             current = maze[x][y].parent;
         }
+        this._currentPath.push(current);
         this._cells[current[0]][current[1]].mark();
+    }
+
+    private darkenMarks() {
+        this._currentPath.forEach(([x, y]) => {
+            this._cells[x][y].darken();
+        });
     }
 
     private clearMarks() {

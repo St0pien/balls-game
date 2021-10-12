@@ -27,10 +27,9 @@ export default class Ball {
         this.ref = document.createElement('div');
         this.ref.classList.add('ball');
         this.ref.style.backgroundColor = this.color;
-        this.ref.addEventListener('click', () => this.onSelect());
     }
 
-    private onSelect() {
+    public onSelect() {
         if (this.selected) {
             this.deSelect();
         } 

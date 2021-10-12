@@ -17,6 +17,7 @@ export default class Cell {
         this.ref.addEventListener('mouseenter', () => {
             this.onHover();
         });
+        this.ref.addEventListener('click', () => this._contains?.onSelect());
     }
 
     private onHover() {
@@ -31,6 +32,10 @@ export default class Cell {
         return this._contains;
     }
 
+    empty() {
+        this._contains = null;
+    }
+
     public placeBall(ball: Ball) {
         this.ref.appendChild(ball.ref);
         ball.move(this.position);
@@ -43,5 +48,9 @@ export default class Cell {
 
     public unmark() {
         this.ref.style.background = '';
+    }
+
+    public darken() {
+        this.ref.style.background = '#ddd';
     }
 }
