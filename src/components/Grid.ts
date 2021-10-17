@@ -1,5 +1,7 @@
 import Cell from "./Cell";
-import Ball from "./Ball";
+import Ball, { Color } from "./Ball";
+import Stats from "./Stats";
+import { randomizeColors } from "./decorators";
 
 export type Cords = [number, number];
 
@@ -13,19 +15,24 @@ class MazeCell {
     }
 }
 
+@randomizeColors
 export default class Grid {
     private readonly _size: Cords;
-    private readonly _ballsPerRound: number;
+    private readonly _combo: number;
     private readonly _ref: HTMLElement;
     private readonly _cells: Cell[][];
-    private readonly _balls: Ball[] = [];
-    private _selectedBall: Ball | null = null;
+    private _balls: Ball[] = [];
+    private readonly _stats: Stats;
     private _targetCell: Cell | null = null;
     private _currentPath: Cords[];
+    
+    protected _selectedBall: Ball | null = null;
+    protected readonly _ballsPerRound: number;
 
-    constructor(size: Cords, ballsPerRound: number) {
+    constructor(size: Cords, ballsPerRound: number, combo=3) {
         this._size = size;
         this._ballsPerRound = ballsPerRound;
+        this._combo = combo;
         this._ref = document.createElement('div');
         this._ref.classList.add('grid');
         document.body.appendChild(this._ref);
@@ -45,15 +52,23 @@ export default class Grid {
 
         this._ref.addEventListener('click', () => this.handleClick())
 
+        this._stats = new Stats();
+
         this.generateBalls();
     }
 
-    private handleClick() {
+    protected get balls() {
+        return this._balls;
+    }
+
+
+    protected handleClick() {
         if (!this._selectedBall || !this._targetCell) return;
         const [x,y] = this._selectedBall.position;
         this._cells[x][y].empty();
 
         this._targetCell.placeBall(this._selectedBall);
+        this.popBalls(this._targetCell.position);
         this._targetCell = null;
         this._selectedBall.deSelect();
         this._selectedBall = null;
@@ -78,6 +93,9 @@ export default class Grid {
                 cell.ref.style.cursor = 'default';
                 return;
             }
+            if (this._selectedBall == cell.contains && this.getNeighbors(cell.position).length > 0) {
+                cell.ref.style.cursor = 'default';
+            }
             cell.ref.style.cursor = 'pointer';
         } else {
             if (cell.contains && this.getNeighbors(cell.position).length > 0) {
@@ -88,18 +106,30 @@ export default class Grid {
         }
     }
 
-    private generateBalls() {
-        for (let i = 0; i < this._ballsPerRound; i++) {
+    protected generateBalls() {
+        if (this._balls.length + this._ballsPerRound >= this._size[0] * this._size[1]) {
+            this.gameOver();
+            return;
+        }
+
+        if (this._stats.colors.length == 0) {
+            this._stats.randomColors(this._ballsPerRound);
+        }
+        const pickedCords: Cords[] = [];
+        this._stats.colors.map(c => {
             const [rows, cols] = this._size;
             let x, y;
             do {
                 x = Math.floor(Math.random() * rows);
                 y = Math.floor(Math.random() * cols);
             } while (this._cells[x][y].contains !== null);
-            const ball = new Ball([x, y], (ball: Ball) => this.handleSelect(ball));
+            pickedCords.push([x, y]);
+            const ball = new Ball([x, y], c, (ball: Ball) => this.handleSelect(ball));
             this._balls.push(ball);
             this._cells[x][y].placeBall(ball);
-        }
+        });
+        this._stats.randomColors(this._ballsPerRound);
+        pickedCords.forEach(cord => this.popBalls(cord));
     }
 
     private findPath(cell: Cell): boolean {
@@ -203,5 +233,69 @@ export default class Grid {
         this._cells.forEach(row => row.forEach(cell => {
             cell.unmark();
         }));
+    }
+
+    private popBalls(cords: Cords) {
+        const checkLine = (line: Cords[]): Ball[] => {
+            let currentIndex = 0;
+            let currentColor: Color;
+            const combo: Cords[] = [];
+            line.forEach(([x, y]) => {
+                const cell: Cell = this._cells[x][y];
+
+                if (!cell.contains || cell.contains.color !== currentColor) {
+                    if (combo.length - currentIndex >= this._combo) {
+                        currentIndex = combo.length;
+                    }
+                    combo.splice(currentIndex);
+                    currentColor = cell.contains?.color;
+                }
+
+                combo.push([x, y]);
+            });
+
+            if (combo.length - currentIndex < this._combo) combo.splice(currentIndex);
+
+            return combo.map(([x, y]) => this._cells[x][y].contains);
+        }
+
+        const row: Cords[] = [];
+        const col: Cords[] = [];
+        const diag: Cords[] = [];
+
+        for (let i=0; i<this._size[1]; i++) {
+            row.push([cords[0], i]);
+        }
+
+        for (let i=0; i<this._size[0]; i++) {
+            col.push([i, cords[1]]);
+        }
+
+        const diff = Math.abs(cords[0] - cords[1]);
+        for (let i=0; i + diff < this._size[0] && i+diff < this._size[1]; i++) {
+            let c: Cords;
+            if (cords[0] > cords[1]) {
+                c = [i+diff, i];
+            } else {
+                c = [i, i+diff];
+            }
+            diag.push(c);
+        }
+
+        const toPop = [...new Set([...checkLine(row), ...checkLine(col), ...checkLine(diag)])];
+        this._balls = this._balls.filter(ball => toPop.indexOf(ball) == -1);
+        toPop.forEach(b => {
+            const [x, y] = b.position;
+            this._cells[x][y].popBall();
+        });
+        this._stats.score += toPop.length;
+    }
+
+    private gameOver() {
+        this._ref.classList.remove('grid');
+        this._ref.classList.add('result');
+        this._ref.innerHTML = `
+            Your score: ${this._stats.score}
+        `;
     }
 }

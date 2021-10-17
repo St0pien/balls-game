@@ -32,7 +32,12 @@ export default class Cell {
         return this._contains;
     }
 
-    empty() {
+    public empty() {
+        this._contains = null;
+    }
+
+    public popBall() {
+        this._contains?.pop();
         this._contains = null;
     }
 

@@ -4,7 +4,9 @@
     "noImplicitAny": true,
     "module": "es6",
     "target": "es5",
-    "allowJs": true
+    "allowJs": true,
+    "experimentalDecorators": true,
+    "downlevelIteration": true
   },
   "files": ["src/index.ts"]
 }

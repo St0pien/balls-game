@@ -10,23 +10,44 @@ export enum Color {
     Brown = '#964b00'
 }
 
+export class StaticBall  {
+    public readonly color: Color;
+    public readonly ref: HTMLElement;
+    
+    constructor(color: Color) {
+        this.color = color;
+        this.ref = document.createElement('div');
+        this.ref.classList.add('ball');
+        this.ref.style.background = this.color;
+    }
+}
+
 export default class Ball {
+    private readonly _animationDuration: number = 0.5;
     private _position: Cords;
     private readonly _selectHandler: (ball: Ball) => void;
     private _selected: boolean = false;
 
-    public readonly color: Color;
+    private _color: Color;
     public readonly ref: HTMLElement;
 
-    constructor(position: Cords, selectHandler: (ball: Ball) => void) {
+    constructor(position: Cords, color: Color, selectHandler: (ball: Ball) => void) {
         this._position = position;
         this._selectHandler = selectHandler;
-        const colors = Object.values(Color);
-        this.color = colors[Math.floor(Math.random() * colors.length)] as Color;
+        this._color = color;
 
         this.ref = document.createElement('div');
         this.ref.classList.add('ball');
-        this.ref.style.backgroundColor = this.color;
+        this.ref.style.backgroundColor = this._color;
+    }
+
+    public get color() {
+        return this._color;
+    }
+
+    public set color(value: Color) {
+        this._color = value;
+        this.ref.style.backgroundColor = this._color;
     }
 
     public onSelect() {
@@ -59,5 +80,13 @@ export default class Ball {
     public deSelect() {
         this._selected = false;
         this.ref.style.transform = '';
+    }
+
+    public pop() {
+        this.ref.style.animationName = 'pop';
+        this.ref.style.animationDuration = `${this._animationDuration}s`;
+        setTimeout(() => {
+            this.ref.remove();
+        }, this._animationDuration*1000)
     }
 }
