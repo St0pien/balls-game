@@ -15,8 +15,14 @@ export function randomizeColors<T extends { new(...args: any[]): Grid }>(constr:
         generateBalls() {
             super.generateBalls();
             const oldBalls = this.balls.slice(0, -this._ballsPerRound*2);
-            oldBalls.forEach(ball => {
+            const chosedBalls: Ball[] = [];
+
+            let counter = 3;
+            oldBalls.slice().forEach(ball => {
                 if (Math.random() > 0.3) return;
+                if (counter == 0) return;
+                counter--;
+                chosedBalls.push(ball);
 
                 const colors = Object.values(Color);
                 const rndColor = colors[Math.floor(Math.random() * colors.length)] as Color;
@@ -27,6 +33,12 @@ export function randomizeColors<T extends { new(...args: any[]): Grid }>(constr:
                     setTimeout(() => ball.ref.style.animationName = '', 1000);
                 }
             });
+
+            setTimeout(() => {
+                oldBalls.forEach(({ position }) => {
+                    this.popBalls(position);
+                });
+            }, 1000);
         }
     }
 }

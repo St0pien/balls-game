@@ -25,11 +25,11 @@ export default class Grid {
     private readonly _stats: Stats;
     private _targetCell: Cell | null = null;
     private _currentPath: Cords[];
-    
+
     protected _selectedBall: Ball | null = null;
     protected readonly _ballsPerRound: number;
 
-    constructor(size: Cords, ballsPerRound: number, combo=3) {
+    constructor(size: Cords, ballsPerRound: number, combo = 3) {
         this._size = size;
         this._ballsPerRound = ballsPerRound;
         this._combo = combo;
@@ -64,7 +64,7 @@ export default class Grid {
 
     protected handleClick() {
         if (!this._selectedBall || !this._targetCell) return;
-        const [x,y] = this._selectedBall.position;
+        const [x, y] = this._selectedBall.position;
         this._cells[x][y].empty();
 
         this._targetCell.placeBall(this._selectedBall);
@@ -235,7 +235,7 @@ export default class Grid {
         }));
     }
 
-    private popBalls(cords: Cords) {
+    protected popBalls(cords: Cords) {
         const checkLine = (line: Cords[]): Ball[] => {
             let currentIndex = 0;
             let currentColor: Color;
@@ -261,28 +261,37 @@ export default class Grid {
 
         const row: Cords[] = [];
         const col: Cords[] = [];
-        const diag: Cords[] = [];
+        const diagRight: Cords[] = [];
+        const diagLeft: Cords[] = [];
 
-        for (let i=0; i<this._size[1]; i++) {
+        for (let i = 0; i < this._size[1]; i++) {
             row.push([cords[0], i]);
         }
 
-        for (let i=0; i<this._size[0]; i++) {
+        for (let i = 0; i < this._size[0]; i++) {
             col.push([i, cords[1]]);
         }
 
         const diff = Math.abs(cords[0] - cords[1]);
-        for (let i=0; i + diff < this._size[0] && i+diff < this._size[1]; i++) {
+        for (let i = 0; i + diff < this._size[0] && i + diff < this._size[1]; i++) {
             let c: Cords;
             if (cords[0] > cords[1]) {
-                c = [i+diff, i];
+                c = [i + diff, i];
             } else {
-                c = [i, i+diff];
+                c = [i, i + diff];
             }
-            diag.push(c);
+            diagRight.push(c);
         }
 
-        const toPop = [...new Set([...checkLine(row), ...checkLine(col), ...checkLine(diag)])];
+        const sum = cords[0] + cords[1];
+        const start = sum - (this._size[0] - 1);
+        let i = 0;
+        for (i = start < 0 ? 0 : start; sum - i >= 0 && i < this._size[0]; i++) {
+            let c: Cords;
+            diagLeft.push([i, sum - i]);
+        }
+
+        const toPop = [...new Set([...checkLine(row), ...checkLine(col), ...checkLine(diagRight), ...checkLine(diagLeft)])];
         this._balls = this._balls.filter(ball => toPop.indexOf(ball) == -1);
         toPop.forEach(b => {
             const [x, y] = b.position;
